@@ -2,7 +2,7 @@ name: MLB Home Run Alerts
 
 on:
   schedule:
-    - cron: "*/25 * * * *"  # Runs every 25 minutes
+    - cron: "*/25 * * * *"  # Every 25 minutes
   workflow_dispatch:
 
 jobs:
@@ -10,24 +10,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Send today's home run hitters
+      - name: Fetch and send today's home run hitters
         run: |
-          # Get current day's date (UTC)
           today=$(date -u +"%Y-%m-%d")
 
-          # Fetch scoreboard and extract all home run hitters
-          all_hrs=$(curl -s https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard \
+          all_hrs=$(curl -s "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard" \
           | jq -r '
-            .events[]?.competitions[]?.competitors[]?.statistics[]? 
+            .events[]?.competitions[]?.statistics[]? 
             | select(.name == "homeRuns") 
             | .leaders[]? 
             | select(.value > 0) 
-            | "\(.athlete.displayName) - \(.team.shortDisplayName) - HRs: \(.value | tonumber)"'
+            | "\(.athlete.displayName) - \(.team.displayName) - HRs: \(.value | tonumber)"'
           )
 
           echo "Fetched Home Runs: $all_hrs"
 
-          # If we found HRs, send the alert
           if [ -n "$all_hrs" ]; then
             message="🚨 Today's MLB Home Run Hitters 🚀\n\n$all_hrs"
             curl -s -X POST "https://api.telegram.org/bot7941683123:AAEXCQ8C-V_3cHUJVI6zJx9E0CNunP9kPs8/sendMessage" \
