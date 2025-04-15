@@ -2,8 +2,8 @@ name: MLB Home Run Alert
 
 on:
   schedule:
-    - cron: "*/5 * * * *" # Runs every 5 minutes
-  workflow_dispatch: # Allows manual trigger
+    - cron: "*/5 * * * *"  # Runs every 5 minutes
+  workflow_dispatch:       # Allows manual triggering from GitHub UI
 
 jobs:
   check_home_runs:
@@ -15,18 +15,7 @@ jobs:
       - name: Check for new home run
         run: |
           # Fetch the latest scoreboard data from ESPN API
-          latest_hr=$(curl -s https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard | jq -r '.events[].competitions[].competitors[].statistics[]? | select(.name=="homeRuns") | .leaders[0]?.athlete.displayName + " - " + .leaders[0]?.team.shortDisplayName' | head -n 1)
-
-          # If a home run is found, compare with the last seen home run
-          if [ -n "$latest_hr" ]; then
-            if [ -f last_home_run.txt ]; then
-              last_home_run=$(cat last_home_run.txt)
-            else
-              last_home_run=""
-            fi
-
-            if [ "$latest_hr" != "$last_home_run" ]; then
-              echo "$latest_hr" > last_home_run.txt
-
-              curl -s -X POST "https://api.telegram.org/bot7941683123:AAEXCQ8C-V_3cHUJVI6zJx9E0CNunP9kPs8/sendMessage" \
-                -d chat_id=7613640636_
+          latest_hr=$(curl -s https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard | jq -r '
+            .events[].competitions[].competitors[].statistics[]? 
+            | select(.name=="homeRuns") 
+            | .leaders[0]?.athlete.displayName + " - " + .leaders[0]?.team.shortDisplayName' | head -n 1)
