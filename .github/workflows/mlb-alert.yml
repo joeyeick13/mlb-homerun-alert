@@ -1,26 +1,28 @@
-name: MLB Home Run Notifier
+name: Home Run Notification
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # Runs every 5 minutes
-  workflow_dispatch:
+    - cron: '*/5 * * * *'  # This runs every 5 minutes
 
 jobs:
-  check_hr:
+  run_homerun_check:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out repository
+      - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Set up jq (JSON processor)
-        run: |
-          sudo apt-get install jq
+      - name: Set up JQ
+        run: sudo apt-get install jq
 
-      - name: Check for Home Runs and Send Telegram
+      - name: Fetch home run data and send alert
         run: |
           # Fetch the latest scoreboard data from ESPN API
-          latest_hr=$(curl -s https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard | jq -r '.events[].competitions[].competitors[].statistics[]? | select(.name=="homeRuns") | .athletes[]? | "\(.athlete.displayName) - \(.team.shortDisplayName)"' | head -n 1)
+          latest_hr=$(curl -s https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard | jq -r '
+            .events[].competitions[].competitors[].statistics[]? 
+            | select(.name=="homeRuns") 
+            | .leaders[0].athlete.displayName + " - " + .leaders[0].team.shortDisplayName' 
+            | head -n 1)
 
           # If a home run is found, compare with the last seen home run
           if [ -n "$latest_hr" ]; then
@@ -37,8 +39,8 @@ jobs:
               echo $latest_hr > last_home_run.txt
 
               # Send a Telegram message
-              curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-                -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+              curl -s -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/sendMessage" \
+                -d chat_id=<YOUR_CHAT_ID> \
                 -d text="🚨 Home Run Alert: $latest_hr 🚀"
             else
               echo "No new home runs."
