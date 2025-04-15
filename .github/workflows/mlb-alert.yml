@@ -2,20 +2,37 @@ name: MLB Home Run Alert
 
 on:
   schedule:
-    - cron: "*/5 * * * *"  # Runs every 5 minutes
-  workflow_dispatch:       # Allows manual triggering from GitHub UI
+    - cron: "*/25 * * * *"  # Every 25 minutes
+  workflow_dispatch:
 
 jobs:
-  check_home_runs:
+  send-home-run-alerts:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
 
-      - name: Check for new home run
+    steps:
+      - name: Fetch and Send Home Run Alerts
         run: |
-          # Fetch the latest scoreboard data from ESPN API
-          latest_hr=$(curl -s https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard | jq -r '
-            .events[].competitions[].competitors[].statistics[]? 
-            | select(.name=="homeRuns") 
-            | .leaders[0]?.athlete.displayName + " - " + .leaders[0]?.team.shortDisplayName' | head -n 1)
+          # Get current day's date
+          today=$(date +"%Y-%m-%d")
+
+          # Fetch scoreboard and extract all home run hitters
+          all_hrs=$(curl -s https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard \
+          | jq -r '
+            .events[] 
+            | select(.date | startswith("'$today'"))
+            | .competitions[]?.competitors[]?.statistics[]? 
+            | select(.name == "homeRuns") 
+            | .leaders[0]? 
+            | select(.value > 0) 
+            | "\(.athlete.displayName) - \(.team.shortDisplayName)"'
+          )
+
+          # If we found HRs, send the alert
+          if [ -n "$all_hrs" ]; then
+            message="🚨 Today's Home Run Hitters 🚨\n\n$all_hrs"
+            curl -s -X POST "https://api.telegram.org/bot7941683123:AAEXCQ8C-V_3cHUJVI6zJx9E0CNunP9kPs8/sendMessage" \
+              -d chat_id=7613640636 \
+              -d text="$message"
+          else
+            echo "No home runs found today yet."
+          fi
