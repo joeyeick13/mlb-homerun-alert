@@ -1,0 +1,23 @@
+name: MLB Home Run Notifier
+
+on:
+  schedule:
+    - cron: '20-59/20 16-21 * * *' # Runs every 20 min from 4:20 PM to 9:20 PM UTC
+  workflow_dispatch:
+
+jobs:
+  check_hr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check for Home Runs and Send Telegram
+        run: |
+          latest_hr=$(curl -s https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard | jq -r '.events[].competitions[].competitors[].statistics[]? | select(.name=="homeRuns") | .athletes[]? | "\(.athlete.displayName) - \(.team.shortDisplayName)"' | head -n 1)
+
+          if [ -n "$latest_hr" ]; then
+            curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+              -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+              -d text="🚨 Home Run Alert: $latest_hr 🚀"
+          else
+            echo "No new home runs."
+          fi
