@@ -2,37 +2,34 @@ name: MLB Home Run Alerts
 
 on:
   schedule:
-    # Run every 15 minutes between 11:00 PM and 4:00 AM UTC (which is 4:00 PM to 9:15 PM PST)
-    - cron: '0,15,30,45 23 * * *'  # Every 15 minutes from 11:00 PM to 11:45 PM UTC
-    - cron: '0,15,30,45 00-04 * * *'  # Every 15 minutes from 12:00 AM to 4:00 AM UTC (next day)
+    # Run every 25 minutes from 4:00 PM to 9:25 PM Pacific Time (11:00 PM to 4:25 AM UTC)
+    - cron: '0,25,50 23 * * *'
+    - cron: '15,40 0-4 * * *'
 
 jobs:
   send-home-run-alerts:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Install jq and curl
+        run: sudo apt-get update && sudo apt-get install -y jq curl
 
       - name: Send Home Run Alert
         run: |
-          today=$(date -u +"%Y-%m-%d")
-          
-          all_hrs=$(curl -s "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard" \
+          # Convert to America/New_York to match ESPN's scoreboard timezone
+          today=$(TZ=America/New_York date +%Y%m%d)
+          echo "Checking for home runs on: $today (ET)"
+
+          all_hrs=$(curl -s "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?dates=$today" \
             | jq -r '
               .events[]?.competitions[]?.leaders[]? 
               | select(.name == "homeRuns") 
               | .leaders[]? 
               | select(.value > 0) 
-              | "\(.athlete.displayName) - \(.team.displayName) - HRs: \(.value | tonumber)"'
+              | "\(.athlete.displayName) of \(.team.shortDisplayName) - HRs: \(.value | tonumber)"'
           )
-          
-          echo "Fetched Home Runs: $all_hrs"
-          
+
           if [ -n "$all_hrs" ]; then
-            message="🚨 Today's MLB Home Run Hitters 🚀\n\n$all_hrs"
-            curl -s -X POST "https://api.telegram.org/bot7941683123:AAEXCQ8C-V_3cHUJVI6zJx9E0CNunP9kPs8/sendMessage" \
-              -d chat_id=7613640636 \
-              -d text="$message"
-          else
-            echo "No home runs found today yet."
-          fi
+            message="🚨 MLB Home Runs for $(TZ=America/New_York date +%Y-%m-%d) 🚀%0A%0A$all_hrs"
+            echo "Sending alert:"
+            echo "$message"
+            curl -s -X POST "https://api.telegram.org/bot7941683123:AAEXCQ8C-V_3cHU_
