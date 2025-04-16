@@ -25,4 +25,4 @@ jobs:
         echo "Fetched Home Runs: $all_hrs"
 
         if [ -n "$all_hrs" ]; then
-          message="🚨 Today's MLB Home Run Hitters 🚀\n\n$all_hrs_
+          message="🚨 Today's MLB Home Run Hitters 🚀\n\n$all_hrs"
