@@ -1,28 +1,37 @@
-name: MLB Home Run Alert
+name: MLB Home Run Alerts
 
 on:
   schedule:
-    - cron: '*/25 * * * *'  # Runs every 25 minutes
+    # Run every 15 minutes from 4:00 PM to 9:15 PM UTC every day
+    - cron: '0,15,30,45 16-21 * * *'
 
 jobs:
-  send_home_run_alert:
+  send-home-run-alerts:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Fetch and send home run alert
-      run: |
-        today=$(date -u +"%Y-%m-%d")
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-        all_hrs=$(curl -s "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard" \
-        | jq -r '
-          .events[]?.competitions[]?.leaders[]? 
-          | select(.name == "homeRuns") 
-          | .leaders[]? 
-          | select(.value > 0) 
-          | "\(.athlete.displayName) - \(.team.displayName) - HRs: \(.value | tonumber)"'
-        )
-
-        echo "Fetched Home Runs: $all_hrs"
-
-        if [ -n "$all_hrs" ]; then
-          message="🚨 Today's MLB Home Run Hitters 🚀\n\n$all_hrs"
+      - name: Send Home Run Alert
+        run: |
+          today=$(date -u +"%Y-%m-%d")
+          
+          all_hrs=$(curl -s "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard" \
+            | jq -r '
+              .events[]?.competitions[]?.leaders[]? 
+              | select(.name == "homeRuns") 
+              | .leaders[]? 
+              | select(.value > 0) 
+              | "\(.athlete.displayName) - \(.team.displayName) - HRs: \(.value | tonumber)"'
+          )
+          
+          echo "Fetched Home Runs: $all_hrs"
+          
+          if [ -n "$all_hrs" ]; then
+            message="🚨 Today's MLB Home Run Hitters 🚀\n\n$all_hrs"
+            curl -s -X POST "https://api.telegram.org/bot7941683123:AAEXCQ8C-V_3cHUJVI6zJx9E0CNunP9kPs8/sendMessage" \
+              -d chat_id=7613640636 \
+              -d text="$message"
+          else
+            echo "No home runs found today yet."
+          fi
