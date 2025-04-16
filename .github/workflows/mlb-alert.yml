@@ -2,8 +2,8 @@ name: MLB Home Run Alerts
 
 on:
   schedule:
-    # Run every 15 minutes from 4:00 PM to 9:15 PM UTC every day
-    - cron: '0,15,30,45 16-21 * * *'
+    # Run every 15 minutes from 11:00 PM to 4:15 AM UTC (which is 4:00 PM to 9:15 PM PST)
+    - cron: '0,15,30,45 23-04 * * *'
 
 jobs:
   send-home-run-alerts:
